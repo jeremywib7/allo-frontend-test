@@ -1,79 +1,48 @@
-# Allo Bank Frontend Technical Assignment
+# Orbit — SpaceX Rocket Explorer
 
-In this assignment, you’re assigned to create a website that displays rockets. This website only has two screens: rocket list screen and rocket detail screen. Here are the requirements:
+Allo Bank frontend solution by **jeremywib7**. React + TypeScript, React Router and Context. Original assignment preserved in [ASSIGNMENT.md](ASSIGNMENT.md); upstream Git history retained. Solution branch: `feat/allo-spacex`. No upstream PR or form submission made.
 
-### Functional Requirements
-- As a user, I want to see a list of rockets in the rocket list screen (Show each rocket image, rocket name, and rocket description)
-- As a user, I want to be able to filter the rockets in the rocket list screen
-- As a user, I want to be able to add the new rocket in the rocket list screen (the API is read-only, so the new rocket only needs to appear in the running app)
-- As a user, I want to be able to see the rocket detail by clicking a rocket in the rocket list screen (Show rocket image, rocket name, rocket description, cost per launch, country, first flight)
-- As a user, I want both screens to still display correctly when some rocket data is missing
+## Run
 
-### API
+Node **22.18+** (native TypeScript test support), npm.
 
-Use the Launch Library 2 API by The Space Devs for rocket data.
-Docs: https://thespacedevs.com/llapi
+```sh
+npm ci --include=dev
+npm run dev -- --host 127.0.0.1
+npm test
+npm run build
+npm run preview
+```
 
-Rocket list (returns all 13 SpaceX rockets in a single request):
+Production static host must rewrite unknown paths to `index.html` for BrowserRouter direct routes. `dist/` is build output, not committed. No backend or API key required.
 
-    GET https://lldev.thespacedevs.com/2.2.0/config/launcher/?manufacturer__name=SpaceX&mode=detailed&limit=20
+## Features
 
-Single rocket:
+- `/`: remote rocket list with image, name, description; case-insensitive trimmed text filter over name, description and country.
+- `/rockets/:id`: detail including cost (USD), country and first flight. Direct remote links fetch detail when necessary.
+- Add rocket form with validated name/description, optional HTTP(S) image, cost, country and date. Added rockets exist in Context until refresh; IDs use `local-` + UUID and never collide with API numeric IDs.
+- Loading, error/retry (including 429), success and no-results states. Nullable fields and failed images have explicit fallbacks; zero cost remains `$0`.
+- Responsive cards/detail/form, labeled controls, keyboard focus, skip link, reduced motion.
 
-    GET https://lldev.thespacedevs.com/2.2.0/config/launcher/:id/
+## API and lifecycle
 
-`mode=detailed` is required — without it the response omits `description`
-and the other detail fields. `limit=20` is required too — the default page size
-is 10, so without it you get 10 rockets and a `next` page instead of all 13.
+Uses Launch Library **2.2.0**, not 2.3.0:
 
-**API version:** use `2.2.0` as shown above. The docs site now showcases
-`2.3.0`, but `2.2.0` is still live with no announced end-of-life, and the field
-names in the table below are the `2.2.0` ones. Don't migrate: `2.3.0` renames
-the endpoint to `/2.3.0/launcher_configurations/` and moves several of these
-fields (`image_url` becomes `image.image_url`, `manufacturer.country_code`
-becomes a `manufacturer.country` array). Both versions return the same 13
-rockets.
+```text
+GET https://lldev.thespacedevs.com/2.2.0/config/launcher/?manufacturer__name=SpaceX&mode=detailed&limit=20
+GET https://lldev.thespacedevs.com/2.2.0/config/launcher/:id/
+```
 
-| Requirement      | Field                              |
-| ---------------- | ---------------------------------- |
-| rocket image     | `image_url`                        |
-| rocket name      | `full_name`                        |
-| description      | `description`                      |
-| cost per launch  | `launch_cost`                      |
-| country          | `manufacturer.country_code`        |
-| first flight     | `maiden_flight`                    |
+One list request normally returns all 13 records. Unexpected pagination is followed only on the same origin/path with loop/20-page protection. Boundary normalization accepts nullable API fields without pretending request failures are successful data. Effects own AbortControllers and ignore stale/unmounted results. Context keeps local/remote arrays separate, so incoming/retried requests never overwrite user additions. Detail requests reuse catalog when available; a direct detail page can issue both background catalog and detail requests, favoring simple shared state over premature request-cache complexity.
 
-**Rate limit:** the API allows 15 requests/hour for anonymous users. Use the
-`lldev.thespacedevs.com` host shown above during development — it serves the
-same data with a far more generous limit. The production host,
-`ll.thespacedevs.com`, will throttle you quickly.
+The dev host has generous limits; no automatic retries/polling. Retry is explicit. External artwork URLs are browser-loaded HTTP(S) images, not fetched by a server. Browser CSP/security and image-source allowlists should be tightened before production use. No HTML injection, credentials or persistent user storage.
 
-Note that some rockets have missing values for `launch_cost`, `maiden_flight`,
-and `image_url`.
+## Verification
 
-### Non-Functional Requirements
-- Use the Launch Library 2 API (see the API section above) for getting the rocket data
-- Implement routers
-- Implement state management
-- Implement lifecycles
-- Create components based will be + points
-- UI states (Loading, Fail/Retry, and Success)
-- Show loading when waiting response from API
-- If an error occurred, user can retry by pressing retry button
-- Show result when get response from API
+`npm test`: Node test runner, normalization/missing data/zero cost, filter, local input validation/UUIDs, request URL and pagination, HTTP 429/500, malformed payload, foreign pagination, detail validation and abort propagation. `npm run build`: strict TypeScript + Vite production build.
 
-### Nice to have characteristics
-Responsive design
-You don’t need to worry about the detailed design, we’re not interested in your artistic prowess (for now), put your efforts on creating a readable/clean/maintainable source code.
+Browser verified: real API returned 13 rockets; local add/detail/back/filter; direct Falcon 9 Block 5 detail; 390px viewport no overflow; intercepted 429 followed by successful Retry; sparse fixture displays zero cost and missing-value fallbacks. Runtime requests are not part of unit tests, keeping tests deterministic and offline.
 
-### Submission
+## Trade-offs
 
-1.  **Fork** this repository.
-
-2.  Implement your solution on a dedicated feature branch (e.g., `feat/allo-spacex`).
-
-3.  When complete, submit your solution via a **Pull Request (PR)** back to the main repository.
-   
-4.  Please complete the form to submit your technical test: [Click Here](https://forms.gle/YAbAQxPuJAdDYmRW7)
-
-Good luck with your assignment! Don't hesitate to contact us if you have any questions about the assignment process.
+React replaces the upstream Vue/Vuetify starter, matching the selected stack; no unnecessary state library. Context is enough for two screens and memory-only additions. No persistent cache, authentication, backend writes or elaborate design framework. No claim of ownership of API data; data credit: [The Space Devs](https://thespacedevs.com/llapi).
